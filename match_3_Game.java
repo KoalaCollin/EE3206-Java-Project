@@ -284,6 +284,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	int x0, y0, x, y;
 	int click = 0;
 	int posX, posY;
+	int hint_x0,hint_y0,hint_x1,hint_y1;
 	boolean swaping = false;
 	boolean animationPlaying = false;
 	boolean bossAnimationPlaying = false;
@@ -304,6 +305,8 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	int[] hitPoints_y;
 	Instant bossHitAnimationTime;
 	Instant currentTime;
+	Instant hintTime;
+	boolean hint;
 	Instant[] hitPoint;
 	String[] typeName = { "Sword", "Hammer", "Bow", "DEF", "HEAL", "Rage", "None", "NULL" };
 
@@ -313,7 +316,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	}
 
 	public static void main(String[] args) {
-		JFrame w = new JFrame("Match-3");
+		JFrame w = new JFrame("Match-3 Monster Battle");
 		w.setResizable(false);
 		w.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		w.add(new match_3_Game());
@@ -344,7 +347,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			board.creatBoard(row, col);
 			// board.displayBoard();
 			// board.setRound(roundNum);
-
+			hint = false;
 			// Monster setting
 			boss_state = 0;
 			bossStateCount = 0;
@@ -363,6 +366,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			rageState = rageRound = 0;
 			currentTime = Instant.now();
 			bossHitAnimationTime = currentTime;
+			hintTime = currentTime.plusSeconds(30);
 			hitPoint = new Instant[3];
 			for (int i = 0; i < 3; i++) {
 				hitPoint[i] = currentTime;
@@ -403,7 +407,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			} else {
 
 				// Monster round
-				// monster state 0 = end round, 1 = attack, 2 = defense then heal, 3 = defense
+				// monster state 0 = end round, 1 = attack, 2 = defense then heal, 3 = defense then heal release skill
 				// then skill
 				// boss decided next round move
 				if (boss_state == 0) {
@@ -623,7 +627,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			g2.drawImage(ragee, 502 + (playerRage * 216 / 100) - 10, 412, null); // (x:502-712,y:412)
 		}
 
-		// draw Cells
+		// draw Cells and cursor
 		for (int i = 0; i < 8; i++) {
 			for (int j = 0; j < 8; j++) {
 				g2.drawImage(gems.getSubimage(board.getCell(i, j).type * 49, 0, 49, 49),
@@ -638,7 +642,15 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			}
 		}
 
+
 		// May draw
+		//hint
+		if (Instant.now().isAfter(hintTime)) {
+			g2.drawImage(cursor.getSubimage(0,0,49,49), hint_x0 + offsetX, hint_y0 + offsetY, 54, 54, null); 
+			g2.drawImage(cursor.getSubimage(0,0,49,49), hint_x1 + offsetX, hint_y1 + offsetY, 54, 54, null); 		
+		}
+
+
 		// Boss hit
 		if (Instant.now().isBefore(bossHitAnimationTime)) {
 			g2.drawImage(gems.getSubimage(0 * 49, 48, 49, 49), 500, 230, 250, 250, null);
@@ -859,6 +871,12 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				// if not a dead board
 				if (!dead) {
 					// System.out.println("\nNo dead\\n");
+					hint_x0 = board.getCell(i, j).i;
+					hint_x1 = board.getCell(i, j + 1).i;
+					hint_y0 = board.getCell(i, j).j;
+					hint_y1 = board.getCell(i, j + 1).j;
+					currentTime = Instant.now();
+					hintTime = currentTime.plusSeconds(30);
 					return;
 				}
 
@@ -877,6 +895,12 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				// if not a dead board
 				if (!dead) {
 					// System.out.println("\\nNo dead\\n");
+					hint_x0 = board.getCell(i, j).i;
+					hint_x1 = board.getCell(i+1, j).i;
+					hint_y0 = board.getCell(i, j).j;
+					hint_y1 = board.getCell(i+1, j).j;
+					currentTime = Instant.now();
+					hintTime = currentTime.plusSeconds(30);
 					return;
 				}
 
