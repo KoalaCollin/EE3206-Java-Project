@@ -460,15 +460,30 @@ public class match_3_Game_v1 extends JPanel implements Runnable, MouseListener {
         g2.setColor(Color.BLACK);
         g2.setFont(new Font("Arial", Font.BOLD, 12));
         g2.drawString(50 + "/" + 100, 514, 42);
-        if (boss_state == 1) {
-            g2.drawImage(bossS1, 480, 50, 250, 250, null);
-        } else {
-            g2.drawImage(bossS2, 480, 50, 250, 250, null);
-        }
+        //boss shield icon
+        g2.drawImage(gems.getSubimage(3*49, 48, 49, 49), 500, 230, 70, 70, null);
+        g2.setFont(new Font("Arial", Font.BOLD, 20));
+        g2.drawString(""+10, 520, 273);
+        //boss atk icon
+        g2.drawImage(gems.getSubimage(0*49, 48, 49, 49), 600, 230, 70, 70, null);
+        g2.setFont(new Font("Arial", Font.BOLD, 25));
+        g2.drawString(":"+100, 670, 273);
+        
+        //if (boss_state == 1) {
+            g2.drawImage(bossS1, 480, 0, 250, 250, null);
+        //} else {
+        //    g2.drawImage(bossS2, 480, 0, 250, 250, null);
+        //}
         g2.setColor(Color.BLACK);
         g2.setFont(new Font("Arial", Font.BOLD, 16));
-        g2.drawString("I will CRASH YOU!!!", 510, 90);
-
+        g2.drawString("I will CRASH YOU!!!", 550, 60);
+        
+        
+        //play shield
+        g2.drawImage(gems.getSubimage(3*49, 0, 49, 49), 480, 345, 40, 40, null);
+        g2.setFont(new Font("Arial", Font.BOLD, 16));
+        g2.drawString(":"+100, 515, 370);
+        
         g2.drawImage(HPBar, 480, 400, 250, 15, null);
         g2.drawImage(HP_G, 512, 402, 216, 11, null);
         g2.setFont(new Font("Arial", Font.BOLD, 11));
