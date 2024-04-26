@@ -225,7 +225,7 @@ class Board {
 
 	private void randomCell(int x, int y) {
 		Random random = new Random();
-		// random type 1 to 5(no Boundary and InvalidBlock)
+		// random type 0 to 5(no Boundary and InvalidBlock)
 		int randomtype = random.nextInt(5);
 		if (randomtype == 4) {
 			randomtype = random.nextInt(2) + 4;
@@ -276,7 +276,7 @@ class Board {
 						if (board[i][j].type < 6)
 							matchScore[board[i][j].type]++;
 					}
-					// System.out.println("elimate:" + i +" " + j + " type=" + board[i][j].type);
+					// System.out.println("eliminate:" + i +" " + j + " type=" + board[i][j].type);
 					// reset matched
 					board[i][j].matched = 0;
 					// displayMatch();
@@ -348,11 +348,12 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	int row = 8;
 	int col = 8;
 	int[] score;
+	int[] newScore;
 	int boss_state;
 	int bossStateCount;
 	int bossHP;
 	int bossAttackValue;
-	int bossDefenceValue;
+	int bossDefenseValue;
 	int playerHP;
 	int playerRage;
 	String[] typeName = { "Sword", "Bow", "Hammer", "DEF", "HEAL", "Rage", "None", "NULL" };
@@ -397,12 +398,12 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			// Monster setting
 			boss_state = 0;
 			bossStateCount = 0;
-			bossHP = 800;
+			bossHP = 1000;
 			bossAttackValue = 0;
-			bossDefenceValue = 0;
+			bossDefenseValue = 0;
 			// Player setting
-			playerHP = 90;
-			playerRage = 100;
+			playerHP = 100;
+			playerRage = 0;
 
 			// check dead every move
 			checkDead = true;
@@ -440,39 +441,76 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			} else {
 
 				// Monster round
-				// monster state 0 = end round, 1 = attack, 2 = defence then heal, 3 = defence
+				// monster state 0 = end round, 1 = attack, 2 = defense then heal, 3 = defense
 				// then skill
 				// boss decided next round move
 				if (boss_state == 0) {
+
 					Random random = new Random();
+
+					// clear score
+					board.clearScore();
+					score = new int[8];
+					bossAttackValue = 0;
+					bossDefenseValue = 0;
 					// random state 1 to 3
 					int randomState = random.nextInt(3) + 3;
 					bossStateCount += randomState;
 					if (bossStateCount >= 10) {
 						boss_state = random.nextInt(2) + 2;
 						bossStateCount = 0;
+
+						// Defense: Heal or Skill
+						bossDefenseValue = random.nextInt(4) + 5;
+						System.out.println("Boss Defense: " + bossDefenseValue);
+						if (boss_state == 2) {
+							// Heal
+							System.out.println("Boss Prepare to Heal");
+						} else {
+							// Skill
+							System.out.println("Boss Prepare to Release Skill");
+						}
+
 					} else {
 						boss_state = 1;
+						// ATK
+						bossAttackValue = random.nextInt(3) + 3;
+						System.out.println("Boss ATK: " + bossAttackValue);
 					}
-
 					System.out.println("Boss state:" + boss_state);
-
-					// state start
-
-					// clear score
-					board.clearScore();
 					// set player round number
 					board.setRound(roundNum);
 
 				} else {
-					// state end
-					// get score
-					score = board.getScore();
+					// Round End
 					System.out.println("Round Score:");
 					for (int i = 0; i < 8; i++) {
 						System.out.print(typeName[i] + ":" + score[i] + " ");
 					}
 					System.out.println();
+					// state end
+					if (boss_state == 1) {
+						if (score[3] < bossAttackValue) {
+							bossAttackValue -= score[3];
+							// BOSS ACK cause damage
+							System.out.println("Player HP - " + bossAttackValue * 10);
+							playerHP -= bossAttackValue * 10;
+						}
+					} else {
+						if (bossDefenseValue > 0) {
+							if (boss_state == 2) {
+								// BOSS Heal
+								System.out.println("Boss Heal!");
+								bossHP += (bossHP - 1000) / 2;
+
+							} else {
+								// BOSS use Skill
+								System.out.println("Boss Release Skill!");
+							}
+
+						}
+
+					}
 
 					boss_state = 0;
 
@@ -634,30 +672,64 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				currentSpeed = initialSpeed;
 				animationPlaying = true;
 			} else {
-				board.eliminateCells();
+				// board.eliminateCells();
 				board.roundNum--;
 				currentSpeed = initialSpeed;
 				// check dead every move
 				checkDead = true;
 				animationPlaying = true;
 			}
+			board.resetCellMatch();
 			swaping = false;
 		}
 
 	}
 
-	// check if there has match, then elimate
+	// check if there has match, then eliminate
 	public void detectMatch() {
 		if (!swaping && !animationPlaying && board.detectMatches()) {
 			// Update Board
 			board.eliminateCells();
+
+			// Score Calculate
+			newScore = board.getScore();
+			for (int i = 0; i < 6; i++) {
+				newScore[i] -= score[i];
+				if (newScore[i] > 0) {
+					System.out.println("Eliminate " + typeName[i] + " X " + newScore[i]);
+					switch (i) {
+					case 0:
+
+						break;
+					case 1:
+
+						break;
+					case 2:
+
+						break;
+					case 3:
+
+						break;
+					case 4:
+
+						break;
+					case 5:
+
+						break;
+					default:
+						System.out.println("Invalid i");
+					}
+				}
+			}
+			//update Score
+			score = board.getScore();
 			// check dead every move
 			checkDead = true;
 			animationPlaying = true;
 		}
 	}
 
-	// check if the board cannot be elimate
+	// check if the board cannot be eliminate
 	public void avoidDead() {
 		boolean dead = true;
 
