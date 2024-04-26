@@ -11,9 +11,9 @@ import static java.lang.Math.*;
 /*
 	type: 	
    		
-   		0.Fire
-   		1.Water
-   		2.Grass
+   		0.Sword
+   		1.Bow
+   		2.Hammer
    		3.Defense
    		4.Treatment
    		5.Rage
@@ -180,11 +180,11 @@ class Board {
 			}
 		}
 	}
-	
+
 	public int getRound() {
 		return roundNum;
 	}
-	
+
 	public void setDead() {
 		int deadcell = 0;
 		for (int x = 0; x < row; x++) {
@@ -194,8 +194,8 @@ class Board {
 			}
 		}
 	}
-	
- 	public void initialcells() {
+
+	public void initialcells() {
 		gameState = 0;
 		board = new Cell[row][col];
 		for (int x = 0; x < row; x++) {
@@ -212,11 +212,12 @@ class Board {
 		// Make sure there are no 3 matches
 		while (detectMatches()) {
 			eliminateCells();
-		};
+		}
+		;
 		for (int x = 0; x < row; x++) {
 			for (int y = 0; y < col; y++) {
 				board[x][y].i = y * tileSize;
-				board[x][y].j = (x - 0)* tileSize;
+				board[x][y].j = (x - 0) * tileSize;
 			}
 		}
 		gameState = 1;
@@ -348,7 +349,13 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	int col = 8;
 	int[] score;
 	int boss_state;
-	String[] typeName = { "Fire ATK", "Water ATK", "Grass ATK", "DEF", "HEAL", "Rage", "None", "NULL" };
+	int bossStateCount;
+	int bossHP;
+	int bossAttackValue;
+	int bossDefenceValue;
+	int playerHP;
+	int playerRage;
+	String[] typeName = { "Sword", "Bow", "Hammer", "DEF", "HEAL", "Rage", "None", "NULL" };
 
 	public match_3_Game() {
 		setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -375,7 +382,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 		}
 	}
 
-	//initial setting
+	// initial setting
 	public void start() {
 		try {
 			view = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
@@ -389,8 +396,15 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 
 			// Monster setting
 			boss_state = 0;
+			bossStateCount = 0;
+			bossHP = 800;
+			bossAttackValue = 0;
+			bossDefenceValue = 0;
+			// Player setting
+			playerHP = 90;
+			playerRage = 100;
 
-			//check dead every move
+			// check dead every move
 			checkDead = true;
 			background = ImageIO.read(getClass().getResource("/background2.png"));
 			gems = ImageIO.read(getClass().getResource("/gems2.png"));
@@ -402,17 +416,17 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			HP = ImageIO.read(getClass().getResource("/Hp.png"));
 			HP_G = ImageIO.read(getClass().getResource("/Hp_G.png"));
 			Rage = ImageIO.read(getClass().getResource("/Rage.png"));
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	//program logic
+	// program logic
 	public void update() {
 		// Moving animation
 		// modify speed by current speed
-		while(animationPlaying) {
+		while (animationPlaying) {
 			movingAnimation();
 			// detect if match
 			detectMatch();
@@ -424,32 +438,34 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				// click to swap
 				playerClickEvent();
 			} else {
-				
-				//Monster round
-				//monster state 0 = end round, 1 = attack, 2 = defence then heal, 3 = defence then skill
-				//boss decided next round move
-				if(boss_state == 0){
+
+				// Monster round
+				// monster state 0 = end round, 1 = attack, 2 = defence then heal, 3 = defence
+				// then skill
+				// boss decided next round move
+				if (boss_state == 0) {
 					Random random = new Random();
 					// random state 1 to 3
-					int randomState = random.nextInt(10);
-					if(randomState < 7){
-						randomState = 1;
-					}else {
-						randomState = random.nextInt(2) + 1;
+					int randomState = random.nextInt(3) + 3;
+					bossStateCount += randomState;
+					if (bossStateCount >= 10) {
+						boss_state = random.nextInt(2) + 2;
+						bossStateCount = 0;
+					} else {
+						boss_state = 1;
 					}
-					boss_state = randomState;
+
 					System.out.println("Boss state:" + boss_state);
 
-					//state start
-					
-					//clear score
+					// state start
+
+					// clear score
 					board.clearScore();
 					// set player round number
 					board.setRound(roundNum);
-					
 
-				}else{
-					//state end
+				} else {
+					// state end
 					// get score
 					score = board.getScore();
 					System.out.println("Round Score:");
@@ -457,109 +473,112 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 						System.out.print(typeName[i] + ":" + score[i] + " ");
 					}
 					System.out.println();
-					
+
 					boss_state = 0;
 
 				}
 
-
-
 			}
-			if(checkDead) {
-				//check dead every move
+			if (checkDead) {
+				// check dead every move
 				avoidDead();
 				checkDead = false;
 			}
 		}
-		
-		
-		
+
 	}
 
-   //draw GUI
-    public void draw() {
-        Graphics2D g2 = (Graphics2D) view.getGraphics();
-        g2.drawImage(background, 0, 0, WIDTH, HEIGHT, null);
-        //player HP
-        g2.drawImage(HPBar, 480, 30, 250, 15, null);
-        //boss HP
-        g2.drawImage(HP, 512, 32, 100, 11, null); // 100->variable:0-216(length)
-        g2.setColor(Color.BLACK);
-        g2.setFont(new Font("Arial", Font.BOLD, 12));
-        g2.drawString(50 + "/" + 100, 514, 42);
-        if (boss_state == 1) {
-            g2.drawImage(bossS1, 480, 50, 250, 250, null);
-        } else {
-            g2.drawImage(bossS2, 480, 50, 250, 250, null);
-        }
-        g2.setColor(Color.BLACK);
-        g2.setFont(new Font("Arial", Font.BOLD, 16));
-        g2.drawString("I will CRASH YOU!!!", 510, 90);
+	// draw GUI
+	public void draw() {
+		Graphics2D g2 = (Graphics2D) view.getGraphics();
 
-        g2.drawImage(HPBar, 480, 400, 250, 15, null);
-        g2.drawImage(HP_G, 512, 402, 216, 11, null);
-        g2.setFont(new Font("Arial", Font.BOLD, 11));
-        g2.drawString("Rage:", 480, 430);
-        g2.drawImage(HPBar.getSubimage(26,0,224,15), 506, 420, 224, 15, null);
-        g2.drawImage(Rage, 512, 422, 216, 11, null);   //variable:216(length)
-        BufferedImage ragee = zoomOutImage(gems.getSubimage(5 * 49, 0, 49, 49), 30, 30);
-        g2.drawImage(ragee, 712,412, null);  //(x:502-712,y:412)
+		// Must draw
+		g2.drawImage(background, 0, 0, WIDTH, HEIGHT, null);
+		// Boss HP font
+		g2.setColor(Color.BLACK);
+		g2.setFont(new Font("Arial", Font.BOLD, 12));
+		g2.drawString(bossHP + "/" + 1000, 514, 28);
+		// HP Bar
+		g2.drawImage(HPBar, 480, 30, 250, 15, null);
+		// boss HP
+		g2.drawImage(HP, 512, 32, (bossHP * 216 / 1000), 11, null); // 100->variable:0-216(length)
 
-        Random random = new Random();
-        /*
-        if (loopnum > 0) {
-            if (loopnum > 150) {
-                g2.setColor(Color.BLACK);
-                g2.setFont(new Font("Arial", Font.BOLD, 25));
-                g2.drawString("-50", 650, 70);
-                for (int i = 1; i <= 3; i++) {
-                    BufferedImage zoomedOutImage = zoomOutImage(gems.getSubimage(0 * 49, 0, 49, 49), 40, 40);
-                    g2.drawImage(zoomedOutImage, 500 + i, 130 + i, null);
-                }
+		if (boss_state == 1) {
+			g2.drawImage(bossS1, 480, 50, 250, 250, null);
+		} else {
+			g2.drawImage(bossS2, 480, 50, 250, 250, null);
+		}
 
-                for (int i = 1; i <= 3; i++) {
-                    BufferedImage zoomedOutImage = zoomOutImage(gems.getSubimage(1 * 49, 0, 49, 49), 40, 40);
-                    g2.drawImage(zoomedOutImage, 500 + i * random.nextInt(100), 130 + i * random.nextInt(70), null);
-                }
-                for (int i = 1; i <= 3; i++) {
-                    BufferedImage zoomedOutImage = zoomOutImage(gems.getSubimage(2 * 49, 0, 49, 49), 40, 40);
-                    g2.drawImage(zoomedOutImage, 500 + i * random.nextInt(100), 130 + i * random.nextInt(70), null);
-                }
-            }
-            loopnum--;
-        } else {
-            loopnum = 250;
-        }
-         */
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                g2.drawImage(gems.getSubimage(board.getCell(i, j).type * 49, 0, 49, 49),
-                        board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY, 49, 49, null);
+		// Boss say
+		g2.setColor(Color.BLACK);
+		g2.setFont(new Font("Arial", Font.BOLD, 16));
+		g2.drawString("I will CRASH YOU!!!", 510, 90);
 
-                // Show cursor
-                if (click == 1) {
-                    if (x0 == j && y0 == i) {
-                        g2.drawImage(cursor, board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY,
-                                cursor.getWidth(), cursor.getHeight(), null);
-                    }
-                }
-            }
-        }
+		// Player HP font
+		g2.setFont(new Font("Arial", Font.BOLD, 12));
+		g2.drawString(playerHP + "/" + 100, 514, 397);
+		// Player HP Bar
+		g2.drawImage(HPBar, 480, 400, 250, 15, null);
+		g2.drawImage(HP_G, 512, 402, (playerHP * 216 / 100), 11, null);
+		// Player Rage font
+		g2.setFont(new Font("Arial", Font.BOLD, 11));
+		g2.drawString("Rage:", 480, 430);
+		// player Rage Bar
+		g2.drawImage(HPBar.getSubimage(26, 0, 224, 15), 506, 420, 224, 15, null);
+		// player Rage Icon
+		g2.drawImage(Rage, 512, 422, (playerRage * 216 / 100), 11, null); // variable:216(length)
+		if (playerRage >= 50) {
+			BufferedImage ragee = zoomOutImage(gems.getSubimage(5 * 49, 0, 49, 49), 30, 30);
+			g2.drawImage(ragee, 502 + (playerRage * 216 / 100) - 10, 412, null); // (x:502-712,y:412)
+		}
 
-        Graphics g = getGraphics();
-        g.drawImage(view, 0, 0, WIDTH, HEIGHT, null);
-        g.dispose();
-    }
+		// May draw
+		/*
+		 * 
+		 * if (loopnum > 0) { if (loopnum > 150) { g2.setColor(Color.BLACK);
+		 * g2.setFont(new Font("Arial", Font.BOLD, 25)); g2.drawString("-50", 650, 70);
+		 * for (int i = 1; i <= 3; i++) { BufferedImage zoomedOutImage =
+		 * zoomOutImage(gems.getSubimage(0 * 49, 0, 49, 49), 40, 40);
+		 * g2.drawImage(zoomedOutImage, 500 + i, 130 + i, null); }
+		 * 
+		 * for (int i = 1; i <= 3; i++) { BufferedImage zoomedOutImage =
+		 * zoomOutImage(gems.getSubimage(1 * 49, 0, 49, 49), 40, 40);
+		 * g2.drawImage(zoomedOutImage, 500 + i * random.nextInt(100), 130 + i *
+		 * random.nextInt(70), null); } for (int i = 1; i <= 3; i++) { BufferedImage
+		 * zoomedOutImage = zoomOutImage(gems.getSubimage(2 * 49, 0, 49, 49), 40, 40);
+		 * g2.drawImage(zoomedOutImage, 500 + i * random.nextInt(100), 130 + i *
+		 * random.nextInt(70), null); } } loopnum--; } else { loopnum = 250; }
+		 */
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				g2.drawImage(gems.getSubimage(board.getCell(i, j).type * 49, 0, 49, 49),
+						board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY, 49, 49, null);
 
-    public BufferedImage zoomOutImage(BufferedImage originalImage, int zoomedWidth, int zoomedHeight) {
-        BufferedImage zoomedOutImage = new BufferedImage(zoomedWidth, zoomedHeight, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2Zoomed = zoomedOutImage.createGraphics();
-        // Draw the zoomed-out image
-        g2Zoomed.drawImage(originalImage, 0, 0, zoomedWidth, zoomedHeight, null);
-        g2Zoomed.dispose();
-        return zoomedOutImage;
-    }
-	//for player click to select swap cell
+				// Show cursor
+				if (click == 1) {
+					if (x0 == j && y0 == i) {
+						g2.drawImage(cursor, board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY,
+								cursor.getWidth(), cursor.getHeight(), null);
+					}
+				}
+			}
+		}
+
+		Graphics g = getGraphics();
+		g.drawImage(view, 0, 0, WIDTH, HEIGHT, null);
+		g.dispose();
+	}
+
+	public BufferedImage zoomOutImage(BufferedImage originalImage, int zoomedWidth, int zoomedHeight) {
+		BufferedImage zoomedOutImage = new BufferedImage(zoomedWidth, zoomedHeight, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2Zoomed = zoomedOutImage.createGraphics();
+		// Draw the zoomed-out image
+		g2Zoomed.drawImage(originalImage, 0, 0, zoomedWidth, zoomedHeight, null);
+		g2Zoomed.dispose();
+		return zoomedOutImage;
+	}
+
+	// for player click to select swap cell
 	public void playerClickEvent() {
 		if (mouse != null && mouse.getID() == MouseEvent.MOUSE_PRESSED) {
 			// Click to Swap
@@ -569,12 +588,12 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				}
 				posX = mouse.getX() - offsetX;
 				posY = mouse.getY() - offsetY;
-				//new select
+				// new select
 				if (click == 1) {
 					x0 = posX / tileSize;
 					y0 = posY / tileSize;
 				}
-				//second select
+				// second select
 				if (click == 2) {
 					x = posX / tileSize;
 					y = posY / tileSize;
@@ -588,11 +607,11 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 							currentSpeed = initialSpeed;
 							animationPlaying = true;
 							return;
-						} else if(x == x0 && y == y0){
-							//cancel select
+						} else if (x == x0 && y == y0) {
+							// cancel select
 							click = 0;
-						} else{
-							//new select
+						} else {
+							// new select
 							x0 = x;
 							y0 = y;
 							click = 1;
@@ -618,7 +637,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				board.eliminateCells();
 				board.roundNum--;
 				currentSpeed = initialSpeed;
-				//check dead every move
+				// check dead every move
 				checkDead = true;
 				animationPlaying = true;
 			}
@@ -627,73 +646,72 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 
 	}
 
-	//check if there has match, then elimate
+	// check if there has match, then elimate
 	public void detectMatch() {
 		if (!swaping && !animationPlaying && board.detectMatches()) {
 			// Update Board
 			board.eliminateCells();
-			//check dead every move
+			// check dead every move
 			checkDead = true;
 			animationPlaying = true;
 		}
 	}
 
-	//check if the board cannot be elimate
+	// check if the board cannot be elimate
 	public void avoidDead() {
 		boolean dead = true;
-		
-		//check column
+
+		// check column
 		for (int i = 0; i < row; i++) {
 			for (int j = 0; j < col - 1; j++) {
-				//try swap
-				board.swap(i, j, i, j+1);
+				// try swap
+				board.swap(i, j, i, j + 1);
 				dead = !board.detectMatches();
-				board.swap(i, j, i, j+1);
+				board.swap(i, j, i, j + 1);
 				board.resetCellMatch();
-				//if not a dead board
-				if(!dead) {
-					//System.out.println("\nNo dead\\n");
+				// if not a dead board
+				if (!dead) {
+					// System.out.println("\nNo dead\\n");
 					return;
 				}
 
 			}
-			
+
 		}
-		
-		//check row
+
+		// check row
 		for (int j = 0; j < col; j++) {
 			for (int i = 0; i < row - 1; i++) {
-				//try swap
+				// try swap
 				board.swap(i, j, i + 1, j);
 				dead = !board.detectMatches();
 				board.swap(i, j, i + 1, j);
 				board.resetCellMatch();
-				//if not a dead board
-				if(!dead) {
-					//System.out.println("\\nNo dead\\n");
+				// if not a dead board
+				if (!dead) {
+					// System.out.println("\\nNo dead\\n");
 					return;
 				}
 
 			}
-			
-		}		
-		
-		
-		//initial cell
-		if(dead) {
+
+		}
+
+		// initial cell
+		if (dead) {
 			System.out.println("\\nDead\\n");
 			board.initialcells();
 		}
 	}
-	
-	//moving cell animation
+
+	// moving cell animation
 	public void movingAnimation() {
 		if (animationPlaying) {
 			animationPlaying = board.animationMove();
-			if(!animationPlaying) {
+			if (!animationPlaying) {
 				return;
 			}
-			//draw animation
+			// draw animation
 			draw();
 			currentSpeed = currentSpeed * 1.004;
 			try {
@@ -706,7 +724,6 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 		}
 	}
 
-
 	@Override
 	public void run() {
 		try {
@@ -715,7 +732,6 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				update();
 				draw();
 				Thread.sleep(1);
-				
 
 			}
 		} catch (Exception e) {
