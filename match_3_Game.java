@@ -5,7 +5,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
-
+import java.time.Instant;
 import static java.lang.Math.*;
 
 /*
@@ -21,9 +21,8 @@ import static java.lang.Math.*;
    		7.InvalidBlock
    		
   gameState:		0:initial
-  					1:player round
-  					2:monster round
-  					3:end
+  					1:start
+
   				
   matchScore:	0-7, refer to type
   				clear after each N round
@@ -31,10 +30,6 @@ import static java.lang.Math.*;
 
 class Cell {
 	public int x, y, type, matched, i, j;
-
-	/*
-	 * x = row y = col i = x coor j = y coor
-	 */
 	public Cell(int x, int y) {
 		this.x = x;
 		this.y = y;
@@ -65,7 +60,7 @@ class Board {
 
 	public void clearScore() {
 		matchScore = new int[8];
-		for(int i = 0; i < 8; i++) {
+		for (int i = 0; i < 8; i++) {
 			matchScore[i] = 0;
 		}
 	}
@@ -135,51 +130,6 @@ class Board {
 		return hasMatches;
 	}
 
-	public void displayBoard() {
-		System.out.print("\n    ");
-		for (int y = 0; y < col; y++) {
-			System.out.printf("%-2d", y);
-		}
-		System.out.println();
-
-		System.out.print("   ");
-		for (int y = 0; y < col; y++) {
-			System.out.print("--");
-		}
-		System.out.println();
-
-		for (int x = 0; x < row; x++) {
-			System.out.printf("%-2c| ", 'A' + x);
-			for (int y = 0; y < col; y++) {
-				System.out.printf("%-2d", board[x][y].type);
-			}
-			System.out.println();
-		}
-	}
-
-	// test print score plane
-	public void displayMatch() {
-		System.out.print("\n    ");
-		for (int y = 0; y < col; y++) {
-			System.out.printf("%-2d", y);
-		}
-		System.out.println();
-
-		System.out.print("   ");
-		for (int y = 0; y < col; y++) {
-			System.out.print("--");
-		}
-		System.out.println();
-
-		for (int x = 0; x < row; x++) {
-			System.out.printf("%-2c| ", 'A' + x);
-			for (int y = 0; y < col; y++) {
-				System.out.printf("%-2d", board[x][y].matched);
-			}
-			System.out.println();
-		}
-	}
-
 	public void resetCellMatch() {
 		for (int i = 0; i < row; i++) {
 			for (int j = 0; j < col; j++) {
@@ -190,16 +140,6 @@ class Board {
 
 	public int getRound() {
 		return roundNum;
-	}
-
-	public void setDead() {
-		int deadcell = 0;
-		for (int x = 0; x < row; x++) {
-			for (int y = 0; y < col; y++) {
-				board[x][y].type = deadcell % 6;
-				deadcell++;
-			}
-		}
 	}
 
 	public void initialcells() {
@@ -240,7 +180,6 @@ class Board {
 		board[x][y].type = randomtype;
 	}
 
-	/////////////////////// To Be Done//////////////////////////////////////
 	public boolean animationMove() {
 		boolean hasMove = false;
 		int pixelsPerMove = 2;
@@ -305,11 +244,11 @@ class Board {
 		}
 		// score test
 		// displayBoard();
-		System.out.println("update:");
-		for (int i = 0; i < 8; i++) {
-			System.out.print(i + ":" + matchScore[i] + " ");
-		}
-		System.out.println();
+		//System.out.println("update:");
+		//for (int i = 0; i < 8; i++) {
+		//	System.out.print(i + ":" + matchScore[i] + " ");
+		//}
+		//System.out.println();
 	}
 
 	public void setRound(int n) {
@@ -347,6 +286,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	int posX, posY;
 	boolean swaping = false;
 	boolean animationPlaying = false;
+	boolean bossAnimationPlaying = false;
 	boolean matched = false;
 	boolean checkDead = false;
 	double initialSpeed = 30;
@@ -356,13 +296,15 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	int col = 8;
 	int[] score;
 	int[] newScore;
-	int boss_state;
-	int bossStateCount;
-	int bossHP;
-	int bossAttackValue;
-	int bossDefenseValue;
-	int playerHP;
-	int playerRage;
+	int boss_state, bossStateCount, bossHP, bossAttackValue, bossDefenseValue, boss_x_coordinate, boss_y_coordinate;
+	int playerHP, playerRage, rageState, rageRound;
+	// 0 None 1:PlayerWin 2:BossWin
+	int gameEnd;
+	int[] hitPoints_x;
+	int[] hitPoints_y;
+	Instant bossHitAnimationTime;
+	Instant currentTime;
+	Instant[] hitPoint;
 	String[] typeName = { "Sword", "Hammer", "Bow", "DEF", "HEAL", "Rage", "None", "NULL" };
 
 	public match_3_Game() {
@@ -393,6 +335,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 	// initial setting
 	public void start() {
 		try {
+			gameEnd = 0;
 			view = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
 			row = 8;
 			col = 8;
@@ -411,9 +354,20 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			// Player setting
 			playerHP = 100;
 			playerRage = 0;
-
+			boss_x_coordinate = 480;
+			boss_y_coordinate = 0;
+			hitPoints_x = new int[3];
+			hitPoints_y = new int[3];
 			// check dead every move
 			checkDead = true;
+			rageState = rageRound = 0;
+			currentTime = Instant.now();
+			bossHitAnimationTime = currentTime;
+			hitPoint = new Instant[3];
+			for (int i = 0; i < 3; i++) {
+				hitPoint[i] = currentTime;
+			}
+
 			background = ImageIO.read(getClass().getResource("/background2.png"));
 			gems = ImageIO.read(getClass().getResource("/gems2.png"));
 			cursor = ImageIO.read(getClass().getResource("/cursor.png"));
@@ -432,6 +386,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 
 	// program logic
 	public void update() {
+
 		// Moving animation
 		// modify speed by current speed
 		while (animationPlaying) {
@@ -469,57 +424,85 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 
 						// Defense: Heal or Skill
 						bossDefenseValue = random.nextInt(4) + 5;
-						System.out.println("Boss Defense: " + bossDefenseValue);
+						//System.out.println("Boss Defense: " + bossDefenseValue);
 						if (boss_state == 2) {
 							// Heal
-							System.out.println("Boss Prepare to Heal");
+							//System.out.println("Boss Prepare to Heal");
 						} else {
 							// Skill
-							System.out.println("Boss Prepare to Release Skill");
+							//System.out.println("Boss Prepare to Release Skill");
+							
 						}
 
 					} else {
 						boss_state = 1;
 						// ATK
-						bossAttackValue = random.nextInt(3) + 3;
-						System.out.println("Boss ATK: " + bossAttackValue);
+						bossAttackValue = random.nextInt(5) + 3;
+						//System.out.println("Boss ATK: " + bossAttackValue);
 					}
-					System.out.println("Boss state:" + boss_state);
+					//System.out.println("Boss state:" + boss_state);
 					// set player round number
 					board.setRound(roundNum);
 
 				} else {
 					// Round End
-					score = board.getScore();
-					System.out.println("Round Score:");
-					for (int i = 0; i < 8; i++) {
-						System.out.print(typeName[i] + ":" + score[i] + " ");
+					// wait
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
 					}
-					System.out.println();
+
+					score = board.getScore();
+					//System.out.println("Round Score:");
+					//for (int i = 0; i < 8; i++) {
+					//	System.out.print(typeName[i] + ":" + score[i] + " ");
+					//}
+					//System.out.println();
 					// state end
 					if (boss_state == 1) {
+						// Boss Attack Animation
+						bossAttackAnimation();
 						if (score[3] < bossAttackValue) {
 							bossAttackValue -= score[3];
+
 							// BOSS ACK cause damage
-							System.out.println("Player HP - " + bossAttackValue * 10);
-							playerHP -= bossAttackValue * 10;
+							//System.out.println("Player HP - " + bossAttackValue * 10);
+							playerHP = max(0, playerHP - bossAttackValue * 10);
+							playerRage = min(100, playerRage + 10);
+
 						}
 					} else {
 						if (bossDefenseValue > 0) {
 							if (boss_state == 2) {
 								// BOSS Heal
-								System.out.println("Boss Heal!");
-								bossHP += (bossHP - 1000) / 2;
+								//System.out.println("Boss Heal!");
+								bossHP += (1000 - bossHP) / 2;
 
 							} else {
 								// BOSS use Skill
-								System.out.println("Boss Release Skill!");
+								//System.out.println("Boss Release Skill!");
+								int totalInvalidBlock = 8;
+								Random random = new Random();
+								for(int i = 0; i < row; i ++){
+									for(int j = 0; j < col; j ++){
+										if(random.nextInt(10) == 0){
+											board.getCell(i, j).type = 6;
+											totalInvalidBlock --;
+											if(totalInvalidBlock <= 0){
+												break;
+											}
+										}
+										if(totalInvalidBlock <= 0){
+											break;
+										}
+									}
+								}
 							}
 
 						}
 
 					}
-
 					boss_state = 0;
 
 				}
@@ -530,104 +513,165 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 				avoidDead();
 				checkDead = false;
 			}
+
+			// WIN AND LOSE
+			if (playerHP <= 0) {
+				gameEnd = 2;
+				isRunning = false;
+
+			} else if (bossHP <= 0) {
+				gameEnd = 1;
+				isRunning = false;
+			}
+
 		}
 
 	}
 
-    // draw GUI
-    public void draw() {
-        Graphics2D g2 = (Graphics2D) view.getGraphics();
+	public void bossAttackAnimation() {
+		bossAnimationPlaying = true;
+		while (boss_y_coordinate < 40) {
+			boss_y_coordinate += 2;
+			draw();
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		// display 0.5sec
+		currentTime = Instant.now();
+		bossHitAnimationTime = currentTime.plusMillis(500);
+		while (boss_y_coordinate > 0) {
+			boss_y_coordinate -= 2;
+			draw();
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 
-        // Must draw
-        g2.drawImage(background, 0, 0, WIDTH, HEIGHT, null);
-        // Boss HP font
-        g2.setColor(Color.BLACK);
-        g2.setFont(new Font("Arial", Font.BOLD, 12));
-        g2.drawString(bossHP + "/" + 1000, 514, 28);
-        // HP Bar
-        g2.drawImage(HPBar, 480, 30, 250, 15, null);
-        // boss HP
-        g2.drawImage(HP, 512, 32, (bossHP * 216 / 1000), 11, null); // 100->variable:0-216(length)
+	}
 
-        if (boss_state == 1) {
-            g2.drawImage(bossS1, 480, 0, 250, 250, null);
-        } else {
-            g2.drawImage(bossS2, 480, 0, 250, 250, null);
-        }
+	// draw GUI
+	public void draw() {
+		currentTime = Instant.now();
+		Graphics2D g2 = (Graphics2D) view.getGraphics();
 
-        //boss shield icon
-        g2.drawImage(gems.getSubimage(3 * 49, 48, 49, 49), 500, 230, 70, 70, null);
-        g2.setFont(new Font("Arial", Font.BOLD, 20));
-        g2.drawString("" + bossDefenseValue, 520, 273);
-        //boss atk icon
-        g2.drawImage(gems.getSubimage(0 * 49, 48, 49, 49), 600, 230, 70, 70, null);
-        g2.setFont(new Font("Arial", Font.BOLD, 25));
-        g2.drawString(":" + bossAttackValue, 670, 273);
+		// Must draw
+		g2.drawImage(background, 0, 0, WIDTH, HEIGHT, null);
+		// Boss HP font
+		g2.setColor(Color.BLACK);
+		g2.setFont(new Font("Arial", Font.BOLD, 12));
+		g2.drawString(bossHP + "/" + 1000, 514, 28);
+		// HP Bar
+		g2.drawImage(HPBar, 480, 30, 250, 15, null);
+		// boss HP
+		g2.drawImage(HP, 512, 32, (bossHP * 216 / 1000), 11, null); // 100->variable:0-216(length)
 
-        // Boss say
-        g2.setColor(Color.BLACK);
-        g2.setFont(new Font("Arial", Font.BOLD, 16));
-        g2.drawString("I will CRASH YOU!!!", 550, 60);
+		if (boss_state == 1) {
+			g2.drawImage(bossS1, boss_x_coordinate, boss_y_coordinate, 250, 250, null);
+			// boss atk icon
+			g2.drawImage(gems.getSubimage(0 * 49, 48, 49, 49), 600, 230, 70, 70, null);
+			g2.setFont(new Font("Arial", Font.BOLD, 25));
+			g2.drawString(":" + bossAttackValue, 670, 273);
+			// Boss say
+			Color brown = new Color(139, 69, 19);
+			g2.setColor(brown);
+			g2.setFont(new Font("Arial", Font.BOLD, 16));
+			g2.drawString("I will CRASH YOU !!!", 550, 60);
+		} else {
+			g2.drawImage(bossS2, boss_x_coordinate, boss_y_coordinate, 250, 250, null);
+			// boss shield icon
+			g2.drawImage(gems.getSubimage(3 * 49, 48, 49, 49), 500, 230, 70, 70, null);
+			g2.setFont(new Font("Arial", Font.BOLD, 20));
+			g2.drawString("" + bossDefenseValue, 530, 273);
+			if (boss_state == 2) {
+				// Boss say
+				Color brown = new Color(139, 69, 19);
+				g2.setColor(brown);
+				g2.setFont(new Font("Arial", Font.BOLD, 16));
+				g2.drawString("I will HEAL MYSELF !", 550, 60);
+			} else if (boss_state == 3) {
+				// Boss say
+				Color brown = new Color(139, 69, 19);
+				g2.setColor(brown);
+				g2.setFont(new Font("Arial", Font.BOLD, 16));
+				g2.drawString("I will RELEASE SKILL !", 550, 60);
+			}
+		}
+		// play shield
+		g2.drawImage(gems.getSubimage(3 * 49, 0, 49, 49), 480, 345, 40, 40, null);
+		g2.setFont(new Font("Arial", Font.BOLD, 16));
+		g2.drawString(":" + score[3], 515, 370);
+		// Player HP font
+		g2.setFont(new Font("Arial", Font.BOLD, 12));
+		g2.drawString(playerHP + "/" + 100, 514, 397);
+		// Player HP Bar
+		g2.drawImage(HPBar, 480, 400, 250, 15, null);
+		g2.drawImage(HP_G, 512, 402, (playerHP * 216 / 100), 11, null);
+		// Player Rage font
+		g2.setFont(new Font("Arial", Font.BOLD, 11));
+		g2.drawString("Rage:", 480, 430);
+		// player Rage Bar
+		g2.drawImage(HPBar.getSubimage(26, 0, 224, 15), 506, 420, 224, 15, null);
+		// player Rage Icon
+		g2.drawImage(Rage, 512, 422, (playerRage * 216 / 100), 11, null); // variable:216(length)
+		if (playerRage >= 50) {
+			BufferedImage ragee = zoomOutImage(gems.getSubimage(5 * 49, 0, 49, 49), 30, 30);
+			g2.drawImage(ragee, 502 + (playerRage * 216 / 100) - 10, 412, null); // (x:502-712,y:412)
+		}
 
-         //play shield
-        g2.drawImage(gems.getSubimage(3*49, 0, 49, 49), 480, 345, 40, 40, null);
-        g2.setFont(new Font("Arial", Font.BOLD, 16));
-        g2.drawString(":"+score[3], 515, 370);
-        // Player HP font
-        g2.setFont(new Font("Arial", Font.BOLD, 12));
-        g2.drawString(playerHP + "/" + 100, 514, 397);
-        // Player HP Bar
-        g2.drawImage(HPBar, 480, 400, 250, 15, null);
-        g2.drawImage(HP_G, 512, 402, (playerHP * 216 / 100), 11, null);
-        // Player Rage font
-        g2.setFont(new Font("Arial", Font.BOLD, 11));
-        g2.drawString("Rage:", 480, 430);
-        // player Rage Bar
-        g2.drawImage(HPBar.getSubimage(26, 0, 224, 15), 506, 420, 224, 15, null);
-        // player Rage Icon
-        g2.drawImage(Rage, 512, 422, (playerRage * 216 / 100), 11, null); // variable:216(length)
-        if (playerRage >= 50) {
-            BufferedImage ragee = zoomOutImage(gems.getSubimage(5 * 49, 0, 49, 49), 30, 30);
-            g2.drawImage(ragee, 502 + (playerRage * 216 / 100) - 10, 412, null); // (x:502-712,y:412)
-        }
+		// draw Cells
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				g2.drawImage(gems.getSubimage(board.getCell(i, j).type * 49, 0, 49, 49),
+						board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY, 49, 49, null);
 
-        // May draw
-        /*
-		 * 
-		 * if (loopnum > 0) { if (loopnum > 150) { g2.setColor(Color.BLACK);
-		 * g2.setFont(new Font("Arial", Font.BOLD, 25)); g2.drawString("-50", 650, 70);
-		 * for (int i = 1; i <= 3; i++) { BufferedImage zoomedOutImage =
-		 * zoomOutImage(gems.getSubimage(0 * 49, 0, 49, 49), 40, 40);
-		 * g2.drawImage(zoomedOutImage, 500 + i, 130 + i, null); }
-		 * 
-		 * for (int i = 1; i <= 3; i++) { BufferedImage zoomedOutImage =
-		 * zoomOutImage(gems.getSubimage(1 * 49, 0, 49, 49), 40, 40);
-		 * g2.drawImage(zoomedOutImage, 500 + i * random.nextInt(100), 130 + i *
-		 * random.nextInt(70), null); } for (int i = 1; i <= 3; i++) { BufferedImage
-		 * zoomedOutImage = zoomOutImage(gems.getSubimage(2 * 49, 0, 49, 49), 40, 40);
-		 * g2.drawImage(zoomedOutImage, 500 + i * random.nextInt(100), 130 + i *
-		 * random.nextInt(70), null); } } loopnum--; } else { loopnum = 250; }
-         */
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                g2.drawImage(gems.getSubimage(board.getCell(i, j).type * 49, 0, 49, 49),
-                        board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY, 49, 49, null);
+				// Show cursor
+				if (click == 1) {
+					if (x0 == j && y0 == i) {
+						g2.drawImage(cursor.getSubimage(49 * rageState,0,49,49), board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY, 54, 54, null); 
+					}
+				}
+			}
+		}
 
-                // Show cursor
-                if (click == 1) {
-                    if (x0 == j && y0 == i) {
-                        g2.drawImage(cursor, board.getCell(i, j).i + offsetX, board.getCell(i, j).j + offsetY,
-                                cursor.getWidth(), cursor.getHeight(), null);
-                    }
-                }
-            }
-        }
+		// May draw
+		// Boss hit
+		if (Instant.now().isBefore(bossHitAnimationTime)) {
+			g2.drawImage(gems.getSubimage(0 * 49, 48, 49, 49), 500, 230, 250, 250, null);
+		}
 
-        Graphics g = getGraphics();
-        g.drawImage(view, 0, 0, WIDTH, HEIGHT, null);
-        g.dispose();
-    }
+		// Hit Boss
+		for (int i = 0; i < 3; i++) {
+			if (Instant.now().isBefore(hitPoint[i])) {
+				g2.setColor(Color.RED);
+				g2.setFont(new Font("Arial", Font.BOLD, 25));
+				g2.drawString("-" + newScore[i] * 10, hitPoints_x[i], hitPoints_y[i]);
+				BufferedImage zoomedOutImage = zoomOutImage(gems.getSubimage(i * 49, 0, 49, 49), 70, 70);
+				g2.drawImage(zoomedOutImage, hitPoints_x[i],hitPoints_y[i], null);
+			}
+		}
+		// Win And Lose
+		if (!isRunning) {
+			if (gameEnd == 1) {
+				g2.setColor(Color.GREEN);
+				g2.setFont(new Font("Arial", Font.BOLD, 90));
+				g2.drawString("YOU WIN !", 150, 230);
+			} else {
+				g2.setColor(Color.RED);
+				g2.setFont(new Font("Arial", Font.BOLD, 90));
+				g2.drawString("YOU LOSE !", 150, 230);
+			}
 
+		}
+
+		Graphics g = getGraphics();
+		g.drawImage(view, 0, 0, WIDTH, HEIGHT, null);
+		g.dispose();
+	}
 
 	public BufferedImage zoomOutImage(BufferedImage originalImage, int zoomedWidth, int zoomedHeight) {
 		BufferedImage zoomedOutImage = new BufferedImage(zoomedWidth, zoomedHeight, BufferedImage.TYPE_INT_ARGB);
@@ -696,6 +740,10 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 			} else {
 				// board.eliminateCells();
 				board.roundNum--;
+				rageRound --;
+				if(rageRound <= 0){
+					rageState = 0;
+				}
 				currentSpeed = initialSpeed;
 				// check dead every move
 				checkDead = true;
@@ -715,43 +763,81 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 
 			// Score Calculate
 			newScore = board.getScore();
-			
+
 			for (int i = 0; i < 6; i++) {
 				newScore[i] -= score[i];
 				if (newScore[i] > 0) {
-					System.out.println("Eliminate " + typeName[i] + " X " + newScore[i]);
-					
-					switch (i) {
-					case 0:
-						//Sword
-						if(bossDefenseValue > 0){
-							
+					//System.out.println("Eliminate " + typeName[i] + " X " + newScore[i]);
+					if (i < 3) {
+						newScore[i] *= (1 + rageState);
+						// type 0 to 2
+						switch (i) {
+						case 0:
+							// Sword
+
+							break;
+						case 1:
+							// Hammer
+
+							break;
+						case 2:
+							// Bow
+
+							break;
+						default:
 						}
-						break;
-					case 1:
-						//Hammer
-						break;
-					case 2:
-						//Bow
-						break;
-					case 3:
-						//Defense
-						break;
-					case 4:
-						//Heal
-						break;
-					case 5:
-						//Rage
-						break;
-					default:
-						System.out.println("Invalid i");
+						// set boss X and Y coordinate
+						// boss_x_coordinate = 0;
+
+						// hit boss
+						if (bossDefenseValue > 0) {
+							if (bossDefenseValue > newScore[i]) {
+								bossDefenseValue -= newScore[i];
+							} else {
+								newScore[i] -= bossDefenseValue;
+								bossDefenseValue = 0;
+								bossHP = max(0, bossHP - newScore[i] * 10);
+							}
+						} else {
+							bossHP = max(0, bossHP - newScore[i] * 10);
+						}
+						Random random = new Random();
+						hitPoint[i] = currentTime.plusMillis(600);
+						//hitPoints_x[i] = boss_x_coordinate + random.nextInt(100) - 50;
+						//hitPoints_y[i] = boss_y_coordinate +   + random.nextInt(80)- 50;
+						hitPoints_x[i] = boss_x_coordinate + 40 + random.nextInt(90);
+						hitPoints_y[i] = boss_y_coordinate + 90 + random.nextInt(80);
+
+					} else {
+						// type 3 to 5
+						switch (i) {
+						case 3:
+							// Defense
+							break;
+						case 4:
+							// Heal
+							playerHP = min(100, playerHP + newScore[i] * 5);
+							break;
+						case 5:
+							// Rage
+							playerRage = min(100, playerRage + newScore[i] * 10);
+							if(playerRage >= 100){
+								//enter rage state
+								rageState = 1;
+								rageRound = 4;
+								playerRage = 0;
+							}
+							break;
+						default:
+							//System.out.println("Invalid i");
+						}
 					}
-					
+
 				}
 			}
-			//update Score
+			// update Score
 			score = board.getScore();
-			
+
 			// check dead every move
 			checkDead = true;
 			animationPlaying = true;
@@ -800,7 +886,7 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 
 		// initial cell
 		if (dead) {
-			System.out.println("\\nDead\\n");
+			//System.out.println("\\nDead\\n");
 			board.initialcells();
 		}
 	}
@@ -827,16 +913,21 @@ public class match_3_Game extends JPanel implements Runnable, MouseListener {
 
 	@Override
 	public void run() {
-		try {
-			start();
-			while (isRunning) {
-				update();
-				draw();
-				Thread.sleep(1);
+		while (true) {
+			try {
+				start();
+				while (isRunning) {
 
+					update();
+					draw();
+					Thread.sleep(1);
+
+				}
+				Thread.sleep(3000);
+				isRunning = true;
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 
